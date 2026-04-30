@@ -6,30 +6,46 @@
     <title>Minesweeper</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* Theme Variables */
+        :root {
+            --bg-color: #1e1e2e;
+            --text-color: #ffffff;
+            --board-bg: #2d2d3a;
+            --cell-bg: #3a3a4a;
+            --cell-hover: #4a4a5a;
+            --cell-revealed: #252530;
+            --cell-border: #4a4a5a;
+            --button-bg: #5568d3;
+            --button-hover: #6a7ce8;
+            --card-bg: #2d2d3a;
+            --input-bg: #3a3a4a;
+            --input-border: #4a4a5a;
+        }
+
         /* Minesweeper Styling */
         #minesweeper-board {
             user-select: none;
             margin: 0 auto;
             display: inline-grid;
             gap: 0;
-            background: #d1d5db;
+            background: var(--board-bg);
             padding: 10px;
             border-radius: 16px;
-            box-shadow: inset 0 0 0 1px rgba(148,163,184,0.15), 0 20px 40px rgba(15,23,42,0.05);
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1), 0 20px 40px rgba(0,0,0,0.2);
         }
         .ms-cell {
             box-sizing: border-box;
             width: 48px;
             height: 48px;
-            background-color: #e2e8f0;
-            border: 1px solid rgba(148,163,184,0.8);
+            background-color: var(--cell-bg);
+            border: 1px solid var(--cell-border);
             border-radius: 0;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 700;
             font-size: 0.95rem;
-            color: #0f172a;
+            color: var(--text-color);
             cursor: pointer;
             transition: all 0.1s ease;
             user-select: none;
@@ -37,17 +53,20 @@
         }
         .ms-cell:hover:not(.revealed):not(.flagged) {
             transform: translateY(-1px);
-            background-color: #f8fafc;
+            background-color: var(--cell-hover);
         }
         .ms-cell.revealed {
-            border-color: #94a3b8;
-            background-color: #ffffff;
+            border-color: var(--cell-border);
+            background-color: var(--cell-revealed);
             cursor: default;
             box-shadow: none;
         }
         .ms-cell.flagged {
-            background-color: #f8fafc;
+            background-color: var(--cell-bg);
             color: transparent;
+        }
+        .ms-cell.flagged.text-mode {
+            color: var(--text-color);
         }
         .ms-cell.mine { background-color: #fecaca; color: #991b1b; }
         .ms-cell img {
@@ -55,20 +74,156 @@
             height: 36px;
             image-rendering: pixelated;
         }
-        .ms-cell.revealed[data-mines="1"] { color: #3b82f6; }
-        .ms-cell.revealed[data-mines="2"] { color: #16a34a; }
-        .ms-cell.revealed[data-mines="3"] { color: #dc2626; }
-        .ms-cell.revealed[data-mines="4"] { color: #4338ca; }
-        .ms-cell.revealed[data-mines="5"] { color: #9333ea; }
-        .ms-cell.revealed[data-mines="6"] { color: #0f766e; }
-        .ms-cell.revealed[data-mines="7"] { color: #0f172a; }
-        .ms-cell.revealed[data-mines="8"] { color: #475569; }
+        .ms-cell.revealed[data-mines="1"] { color: #0000ff; }
+        .ms-cell.revealed[data-mines="2"] { color: #008000; }
+        .ms-cell.revealed[data-mines="3"] { color: #ff0000; }
+        .ms-cell.revealed[data-mines="4"] { color: #000080; }
+        .ms-cell.revealed[data-mines="5"] { color: #800000; }
+        .ms-cell.revealed[data-mines="6"] { color: #008080; }
+        .ms-cell.revealed[data-mines="7"] { color: #000000; }
+        .ms-cell.revealed[data-mines="8"] { color: #808080; }
+
+        /* Text Mode Styles */
+        .ms-cell.text-mode {
+            font-size: 1.5rem;
+        }
+        .ms-cell.text-mode img {
+            display: none;
+        }
+
+        /* Text Mode Toggle */
+        .text-mode-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .text-mode-toggle label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            background: var(--card-bg);
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--input-border);
+            color: var(--text-color);
+        }
+
+        /* Volume Slider */
+        .volume-slider {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+        }
+        .volume-slider label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--card-bg);
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--input-border);
+            color: var(--text-color);
+        }
+        .volume-slider input[type="range"] {
+            width: 100px;
+            cursor: pointer;
+        }
+
+        /* Score Edit Modal */
+        .score-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .score-modal.active {
+            display: flex;
+        }
+        .score-modal-content {
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid var(--input-border);
+            min-width: 300px;
+        }
+        .score-modal-content h3 {
+            margin-bottom: 16px;
+            color: var(--text-color);
+        }
+        .score-modal-content input {
+            width: 100%;
+            padding: 8px 12px;
+            margin-bottom: 16px;
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text-color);
+            font-size: 16px;
+        }
+        .score-modal-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        .score-modal-buttons button {
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: none;
+            font-size: 14px;
+        }
+        .score-modal-buttons .cancel {
+            background: var(--input-bg);
+            color: var(--text-color);
+        }
+        .score-modal-buttons .save {
+            background: var(--button-bg);
+            color: white;
+        }
     </style>
 </head>
-<body class="bg-slate-100 font-sans min-h-screen pb-10">
+<body class="font-sans min-h-screen pb-10" style="background-color: var(--bg-color); color: var(--text-color);">
+
+    <div class="text-mode-toggle">
+        <label>
+            <input type="checkbox" id="textMode" onchange="toggleTextMode()">
+            <span>Text Mode</span>
+        </label>
+    </div>
+
+    <div class="volume-slider">
+        <label>
+            <span>🔊</span>
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="1" onchange="changeVolume(this.value)">
+        </label>
+    </div>
+
+    <div class="score-modal" id="scoreModal">
+        <div class="score-modal-content">
+            <h3>Edit Score</h3>
+            <input type="number" id="scoreInput" value="0">
+            <div class="score-modal-buttons">
+                <button class="cancel" onclick="closeScoreModal()">Cancel</button>
+                <button class="save" onclick="saveScore()">Save</button>
+            </div>
+        </div>
+    </div>
 
     <script>
 let msTotalScore = parseInt(localStorage.getItem('msTotalScore')) || 0;
+let msTextMode = localStorage.getItem('msTextMode') === 'true';
+let msVolume = parseFloat(localStorage.getItem('msVolume')) || 1;
+let cheatCodeSequence = '';
+const cheatCode = '12346';
 let msBoard = [];
 let msRows = 8, msCols = 8, msMinesCount = 10;
 let msGameOver = false;
@@ -345,7 +500,8 @@ function revealCell(r, c) {
 
     if (cell.mine) {
         playMSAudio('snd-explode'); 
-        el.innerHTML = '<img src="bomb.png" alt="bomb">';
+        el.innerHTML = msTextMode ? 'X' : '<img src="bomb.png" alt="bomb">';
+        if (msTextMode) el.classList.add('text-mode');
         el.classList.add('mine');
         gameOver(false);
         return;
@@ -354,7 +510,8 @@ function revealCell(r, c) {
     playMSAudio('snd-reveal');
 
     if (cell.neighbors > 0) {
-        el.innerHTML = `<img src="${cell.neighbors}.png" alt="${cell.neighbors}">`;
+        el.innerHTML = msTextMode ? cell.neighbors : `<img src="${cell.neighbors}.png" alt="${cell.neighbors}">`;
+        if (msTextMode) el.classList.add('text-mode');
     } else {
         el.innerHTML = '';
         for (let dr = -1; dr <= 1; dr++) {
@@ -375,11 +532,13 @@ function handleMSRightClick(r, c) {
     if (cell.flagged) {
         playMSAudio('snd-flag');
         el.classList.add('flagged');
-        el.innerHTML = '<img src="flag.png" alt="flag">';
+        el.innerHTML = msTextMode ? 'F' : '<img src="flag.png" alt="flag">';
+        if (msTextMode) el.classList.add('text-mode');
         msFlagsCount--;
     } else {
         el.classList.remove('flagged');
         el.innerHTML = '';
+        el.classList.remove('text-mode');
         msFlagsCount++;
     }
     document.getElementById('minesweeper-flags').innerText = msFlagsCount;
@@ -495,15 +654,18 @@ Total: +${gamePoints}
 
             if (cell.mine && cell.flagged) {
                 el.classList.add('revealed');
-                el.innerHTML = '<img src="flagright.png">';
+                el.innerHTML = msTextMode ? 'F' : '<img src="flagright.png">';
+                if (msTextMode) el.classList.add('text-mode');
             }
             else if (cell.mine) {
                 el.classList.add('revealed', 'mine');
-                el.innerHTML = '<img src="bomb.png" alt="bomb">';
+                el.innerHTML = msTextMode ? 'X' : '<img src="bomb.png" alt="bomb">';
+                if (msTextMode) el.classList.add('text-mode');
             }
             else if (cell.flagged) {
                 el.classList.add('revealed');
-                el.innerHTML = '<img src="flagwrong.png">';
+                el.innerHTML = msTextMode ? 'F' : '<img src="flagwrong.png">';
+                if (msTextMode) el.classList.add('text-mode');
             }
         }
     }
@@ -512,10 +674,59 @@ Total: +${gamePoints}
 function playMSAudio(id) {
     const sound = document.getElementById(id);
     if (sound) {
+        sound.volume = msVolume;
         sound.currentTime = 0; // Reset to start for rapid clicks
         sound.play().catch(e => console.log("Audio play blocked until user interacts"));
     }
 }
+
+function changeVolume(value) {
+    msVolume = parseFloat(value);
+    localStorage.setItem('msVolume', msVolume);
+    // Update all audio elements
+    const audioElements = document.querySelectorAll('audio');
+    audioElements.forEach(audio => {
+        audio.volume = msVolume;
+    });
+}
+
+function toggleTextMode() {
+    msTextMode = document.getElementById('textMode').checked;
+    localStorage.setItem('msTextMode', msTextMode);
+    // Re-render the board to apply the change
+    if (msBoard.length > 0) {
+        for (let r = 0; r < msRows; r++) {
+            for (let c = 0; c < msCols; c++) {
+                const cell = msBoard[r][c];
+                const el = document.getElementById(`ms-${r}-${c}`);
+                if (cell.revealed) {
+                    if (cell.mine) {
+                        el.innerHTML = msTextMode ? 'X' : '<img src="bomb.png" alt="bomb">';
+                    } else if (cell.neighbors > 0) {
+                        el.innerHTML = msTextMode ? cell.neighbors : `<img src="${cell.neighbors}.png" alt="${cell.neighbors}">`;
+                    }
+                } else if (cell.flagged) {
+                    el.innerHTML = msTextMode ? 'F' : '<img src="flag.png" alt="flag">';
+                }
+                if (msTextMode) {
+                    el.classList.add('text-mode');
+                } else {
+                    el.classList.remove('text-mode');
+                }
+            }
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('textMode').checked = msTextMode;
+    document.getElementById('volumeSlider').value = msVolume;
+    // Set initial volume for all audio elements
+    const audioElements = document.querySelectorAll('audio');
+    audioElements.forEach(audio => {
+        audio.volume = msVolume;
+    });
+});
 
 document.addEventListener('DOMContentLoaded', toggleCustomMinesweeper);
 
@@ -524,56 +735,85 @@ window.addEventListener('keydown', (e) => {
         e.preventDefault();
         startMinesweeper();
     }
+    
+    // Cheat code detection
+    if (e.key >= '0' && e.key <= '9') {
+        cheatCodeSequence += e.key;
+        if (cheatCodeSequence.length > 10) {
+            cheatCodeSequence = cheatCodeSequence.slice(-10);
+        }
+        if (cheatCodeSequence.includes(cheatCode)) {
+            openScoreModal();
+            cheatCodeSequence = '';
+        }
+    }
 });
+
+function openScoreModal() {
+    document.getElementById('scoreInput').value = msTotalScore;
+    document.getElementById('scoreModal').classList.add('active');
+}
+
+function closeScoreModal() {
+    document.getElementById('scoreModal').classList.remove('active');
+}
+
+function saveScore() {
+    const newScore = parseInt(document.getElementById('scoreInput').value) || 0;
+    msTotalScore = newScore;
+    localStorage.setItem('msTotalScore', msTotalScore);
+    document.getElementById('minesweeper-total-score').innerText = msTotalScore;
+    closeScoreModal();
+}
 
     </script>
 
     <main class="container mx-auto mt-8 p-4">
-        <section id="minesweeper" class="bg-white p-6 rounded-xl shadow-md">
+        <section id="minesweeper" class="p-6 rounded-xl shadow-md" style="background-color: var(--card-bg);">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold mb-6">Minesweeper</h2>
             </div>
             <div class="flex flex-col md:flex-row justify-center items-center gap-4 mb-4">
-                <select id="minesweeper-difficulty" onchange="toggleCustomMinesweeper()" class="border p-2 rounded w-full md:w-auto">
+                <select id="minesweeper-difficulty" onchange="toggleCustomMinesweeper()" class="border p-2 rounded w-full md:w-auto" style="background-color: var(--input-bg); color: var(--text-color); border-color: var(--input-border);">
                     <option value="easy">8x8 (10 mines)</option>
                     <option value="medium">12x12 (20 mines)</option>
                     <option value="hard">16x16 (40 mines)</option>
                     <option value="custom">Custom</option>
                 </select>
-                <button onclick="startMinesweeper()" class="bg-green-600 text-white px-6 py-2 rounded font-semibold hover:bg-green-700 transition-colors">New Game</button>
+                <button onclick="startMinesweeper()" class="px-6 py-2 rounded font-semibold transition-colors" style="background-color: var(--button-bg); color: white;">New Game</button>
             </div>
             <div id="minesweeper-custom-panel" class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4" style="display:none;">
                 <div class="flex flex-col">
-                    <label class="text-sm text-slate-600 mb-1" for="minesweeper-custom-rows">Rows</label>
-                    <input id="minesweeper-custom-rows" type="number" min="4" max="30" value="10" class="border p-2 rounded">
+                    <label class="text-sm mb-1" for="minesweeper-custom-rows" style="color: var(--text-color);">Rows</label>
+                    <input id="minesweeper-custom-rows" type="number" min="4" max="30" value="10" class="border p-2 rounded" style="background-color: var(--input-bg); color: var(--text-color); border-color: var(--input-border);">
                 </div>
                 <div class="flex flex-col">
-                    <label class="text-sm text-slate-600 mb-1" for="minesweeper-custom-cols">Cols</label>
-                    <input id="minesweeper-custom-cols" type="number" min="4" max="30" value="10" class="border p-2 rounded">
+                    <label class="text-sm mb-1" for="minesweeper-custom-cols" style="color: var(--text-color);">Cols</label>
+                    <input id="minesweeper-custom-cols" type="number" min="4" max="30" value="10" class="border p-2 rounded" style="background-color: var(--input-bg); color: var(--text-color); border-color: var(--input-border);">
                 </div>
                 <div class="flex flex-col">
-                    <label class="text-sm text-slate-600 mb-1" for="minesweeper-custom-mines">Mines</label>
-                    <input id="minesweeper-custom-mines" type="number" min="1" value="12" class="border p-2 rounded">
+                    <label class="text-sm mb-1" for="minesweeper-custom-mines" style="color: var(--text-color);">Mines</label>
+                    <input id="minesweeper-custom-mines" type="number" min="1" value="12" class="border p-2 rounded" style="background-color: var(--input-bg); color: var(--text-color); border-color: var(--input-border);">
                 </div>
             </div>
-            <p class="text-center text-sm text-slate-500 mb-4">Right click to flag a cell. Press <span class="font-semibold">Spacebar</span> to reset.</p>
+            <p class="text-center text-sm mb-4" style="color: var(--text-color); opacity: 0.7;">Right click to flag a cell. Press <span class="font-semibold">Spacebar</span> to reset.</p>
             <div class="text-center mb-4 overflow-auto">
                 <div id="minesweeper-board" class="inline-grid"></div>
             </div>
             <div class="grid grid-cols-2 gap-4 text-center max-w-xs mx-auto">
-                <div class="bg-slate-100 p-3 rounded">
+                <div class="p-3 rounded" style="background-color: var(--input-bg);">
                     <div class="text-xl font-bold text-red-600" id="minesweeper-flags">0</div>
-                    <div class="text-xs text-gray-500 uppercase">Flags</div>
+                    <div class="text-xs uppercase" style="opacity: 0.7;">Flags</div>
                 </div>
-                <div class="bg-slate-100 p-3 rounded">
+                <div class="p-3 rounded" style="background-color: var(--input-bg);">
                     <div class="text-xl font-bold text-blue-600" id="minesweeper-timer">0</div>
-                    <div class="text-xs text-gray-500 uppercase">Time</div>
+                    <div class="text-xs uppercase" style="opacity: 0.7;">Time</div>
                 </div>
                 <div>Total Score: <span id="minesweeper-total-score" class="font-bold text-blue-600">0</span></div>
             </div>
             <div id="minesweeper-status" class="text-center mt-4 font-bold text-lg h-8"></div>
-            <p class="text-center text-sm text-slate-500 mt-3">Use left click to uncover.</p>
-            <div class="mt-6 bg-slate-50 p-4 rounded-lg border">
+            <p class="text-center text-sm mt-3" style="color: var(--text-color); opacity: 0.7;">Use left click to uncover.</p>
+            <div class="mt-6 p-4 rounded-lg border" style="background-color: var(--input-bg); border-color: var(--input-border);">
                 <h3 class="font-bold text-center mb-2">Best Times</h3>
                 <div class="grid grid-cols-3 gap-2 text-center text-sm">
                     <div>
