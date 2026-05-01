@@ -426,11 +426,7 @@
                     <label>Chording</label>
                     <input type="checkbox" id="chording" onchange="toggleChording()">
                 </div>
-                <div class="settings-item">
-                    <label>No Animations</label>
-                    <input type="checkbox" id="noAnimations" onchange="toggleNoAnimations()">
-                </div>
-            </div>
+                            </div>
 
             <div class="settings-content" id="settings-audio">
                 <div class="settings-item">
@@ -558,7 +554,7 @@
     <script>
 let msTotalScore = parseInt(localStorage.getItem('msTotalScore')) || 0;
 let msTextMode = localStorage.getItem('msTextMode') !== 'false'; // Default on
-let msVolume = parseFloat(localStorage.getItem('msVolume')) || 1;
+let msVolume = parseFloat(localStorage.getItem('msVolume')) || 0.5;
 let msHighContrast = localStorage.getItem('msHighContrast') === 'true';
 let msHideTimer = localStorage.getItem('msHideTimer') === 'true';
 let msQuestionMarks = localStorage.getItem('msQuestionMarks') === 'true';
@@ -621,16 +617,14 @@ let msFlagsCount = 0;
 let msViewMinesUsed = false; // Track if View Mines was ever enabled during this game
 document.addEventListener('DOMContentLoaded', () => {
     updateBestTimesDisplay();
-    startMinesweeper();
-    // Load settings
+    // Load settings FIRST
     document.getElementById('textMode').checked = msTextMode;
     document.getElementById('volumeSlider').value = msVolume;
     document.getElementById('highContrast').checked = msHighContrast;
     document.getElementById('hideTimer').checked = msHideTimer;
     document.getElementById('questionMarks').checked = msQuestionMarks;
     document.getElementById('chording').checked = msChording;
-    document.getElementById('noAnimations').checked = msNoAnimations;
-    
+        
     // Audio settings
     document.getElementById('soundEnabled').checked = msSoundEnabled;
     document.getElementById('soundReveal').checked = msSoundReveal;
@@ -640,6 +634,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Debug settings
     document.getElementById('viewMines').checked = msViewMines;
+    
+    // NOW start the game after settings are loaded
+    startMinesweeper();
     
     // Update statistics display
     updateStatisticsDisplay();
@@ -683,7 +680,10 @@ function startMinesweeper() {
     msFirstClick = true;
     msFinalTime = 0;
     msFlagsCount = msMinesCount;
-    msViewMinesUsed = false; // Reset for new game
+    
+    // Check if View Mines is already enabled when game starts
+    msViewMinesUsed = msViewMines;
+    
     clearInterval(msTimerInterval);
 
     document.getElementById('minesweeper-timer').innerText = "0";
@@ -1062,7 +1062,7 @@ function startMSTimer() {
     msTimerInterval = setInterval(() => {
         const elapsed = (Date.now() - msStartTime) / 1000;
         document.getElementById('minesweeper-timer').innerText = Math.floor(elapsed);
-    }, 16);
+    }, 100);
 }
 
 function checkWin() {
@@ -1167,6 +1167,12 @@ function gameOver(won) {
 
     gamePoints = Math.floor(gamePoints * difficultyMultiplier);
 
+    // Don't award points if View Mines was ever enabled during this game
+    if (msViewMinesUsed) {
+        // No points awarded if View Mines was used
+        gamePoints = 0;
+    }
+    
     // Show score animation if points gained
     if (gamePoints > 0) {
         const oldScore = msTotalScore;
@@ -1176,19 +1182,11 @@ function gameOver(won) {
             animateScoreUpdate(oldScore, newScore);
             msTotalScore = newScore;
             localStorage.setItem('msTotalScore', msTotalScore);
+            document.getElementById('minesweeper-total-score').innerText = msTotalScore;
         });
     } else {
         // Update immediately if no points
         msTotalScore += gamePoints;
-        localStorage.setItem('msTotalScore', msTotalScore);
-        document.getElementById('minesweeper-total-score').innerText = msTotalScore;
-    }
-    
-    // Don't award points if View Mines was ever enabled during this game
-    if (msViewMinesUsed) {
-        // Reset to original score (remove any points gained)
-        const originalScore = msTotalScore - gamePoints;
-        msTotalScore = originalScore;
         localStorage.setItem('msTotalScore', msTotalScore);
         document.getElementById('minesweeper-total-score').innerText = msTotalScore;
     }
@@ -1253,6 +1251,7 @@ function playMSAudio(id) {
         const clone = sound.cloneNode();
         clone.volume = msVolume;
         clone.play();
+        clone.onended = () => clone.remove();
     } else {
         // normal behavior for everything else
         sound.volume = msVolume;
@@ -1457,10 +1456,6 @@ function toggleChording() {
     localStorage.setItem('msChording', msChording);
 }
 
-function toggleNoAnimations() {
-    msNoAnimations = document.getElementById('noAnimations').checked;
-    localStorage.setItem('msNoAnimations', msNoAnimations);
-}
 
 // Audio toggles
 function toggleSoundEnabled() {
@@ -1600,11 +1595,7 @@ function closeScoreModal() {
 }
 
 function showScoreAnimation(points, callback) {
-    if (msNoAnimations) {
-        // Skip animation if disabled
-        callback();
-        return;
-    }
+    // Always show animations
     
     const totalScoreEl = document.getElementById('minesweeper-total-score');
     const rect = totalScoreEl.getBoundingClientRect();
@@ -1612,8 +1603,8 @@ function showScoreAnimation(points, callback) {
     const popup = document.createElement('div');
     popup.className = 'score-popup';
     popup.textContent = `+${points}`;
-    popup.style.left = `${rect.right + 10}px`;
-    popup.style.top = `${rect.top + -5}px`;
+    popup.style.left = `${rect.right -50}px`;
+    popup.style.top = `${rect.top +15}px`;
     
     document.body.appendChild(popup);
     
@@ -1627,11 +1618,7 @@ function showScoreAnimation(points, callback) {
 }
 
 function animateScoreUpdate(startScore, endScore) {
-    if (msNoAnimations) {
-        // Skip animation if disabled
-        document.getElementById('minesweeper-total-score').innerText = endScore;
-        return;
-    }
+    // Always animate score
     
     const scoreEl = document.getElementById('minesweeper-total-score');
     const difference = endScore - startScore;
@@ -1664,7 +1651,7 @@ function saveScore() {
     closeScoreModal();
 }
 
-    </script>
+</script>
 
     <main class="container mx-auto mt-8 p-4">
         <section id="minesweeper" class="p-6 rounded-xl shadow-md" style="background-color: var(--card-bg);">
