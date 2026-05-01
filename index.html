@@ -2,10 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Minesweeper</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* Prevent all scrolling */
+        html, body {
+            overflow: hidden;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+        
         /* Theme Variables */
         :root {
             --bg-color: #1e1e2e;
@@ -68,20 +76,50 @@
         .ms-cell.flagged.text-mode {
             color: var(--text-color);
         }
-        .ms-cell.mine { background-color: #fecaca; color: #991b1b; }
+        .ms-cell.mine { background-color: #3a1a1a; color: #ff6b6b; }
+
+
+        /* Score Animation */
+        .score-popup {
+            position: absolute;
+            color: #00ff00;
+            font-weight: bold;
+            font-size: 16px;
+            pointer-events: none;
+            z-index: 1001;
+            animation: scorePopup 2s ease-out forwards;
+        }
+        @keyframes scorePopup {
+            0% {
+                opacity: 0;
+                transform: translateY(8px) scale(0.8);
+            }
+            20% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            80% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(0) scale(0.8);
+            }
+        }
         .ms-cell img {
             width: 36px;
             height: 36px;
             image-rendering: pixelated;
         }
-        .ms-cell.revealed[data-mines="1"] { color: #0000ff; }
-        .ms-cell.revealed[data-mines="2"] { color: #008000; }
-        .ms-cell.revealed[data-mines="3"] { color: #ff0000; }
-        .ms-cell.revealed[data-mines="4"] { color: #000080; }
-        .ms-cell.revealed[data-mines="5"] { color: #800000; }
-        .ms-cell.revealed[data-mines="6"] { color: #008080; }
-        .ms-cell.revealed[data-mines="7"] { color: #000000; }
-        .ms-cell.revealed[data-mines="8"] { color: #808080; }
+        .ms-cell.revealed[data-mines="1"] { color: #4da6ff; }
+        .ms-cell.revealed[data-mines="2"] { color: #00ff00; }
+        .ms-cell.revealed[data-mines="3"] { color: #ff4d4d; }
+        .ms-cell.revealed[data-mines="4"] { color: #6666ff; }
+        .ms-cell.revealed[data-mines="5"] { color: #ff6666; }
+        .ms-cell.revealed[data-mines="6"] { color: #00ffff; }
+        .ms-cell.revealed[data-mines="7"] { color: #ffffff; }
+        .ms-cell.revealed[data-mines="8"] { color: #cccccc; }
 
         /* Text Mode Styles */
         .ms-cell.text-mode {
@@ -91,46 +129,206 @@
             display: none;
         }
 
-        /* Text Mode Toggle */
-        .text-mode-toggle {
+        /* Settings Menu */
+        .settings-menu {
             position: fixed;
             bottom: 20px;
             right: 20px;
             z-index: 1000;
         }
-        .text-mode-toggle label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
+        .settings-toggle {
             background: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid var(--input-border);
             padding: 10px 16px;
             border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .settings-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 100px;
+        }
+        .settings-overlay.active {
+            display: flex;
+        }
+        .settings-window {
+            background: var(--card-bg);
             border: 1px solid var(--input-border);
+            border-radius: 12px;
+            padding: 24px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        .settings-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--input-border);
+        }
+        .settings-tab {
+            padding: 8px 16px;
+            background: none;
+            border: none;
             color: var(--text-color);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .settings-tab:hover {
+            opacity: 0.8;
+        }
+        .settings-tab.active {
+            border-bottom-color: var(--button-bg);
+            color: var(--button-bg);
+        }
+        .settings-content {
+            display: none;
+        }
+        .settings-content.active {
+            display: block;
+        }
+        .settings-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .settings-item:last-child {
+            margin-bottom: 0;
+        }
+        .settings-item label {
+            color: var(--text-color);
+            font-size: 14px;
+        }
+        .settings-item input[type="checkbox"] {
+            cursor: pointer;
+        }
+        .settings-item input[type="range"] {
+            width: 120px;
+            cursor: pointer;
+        }
+        .keybind-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--input-border);
+        }
+        .keybind-section h4 {
+            color: var(--text-color);
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+        .keybind-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .keybind-item label {
+            color: var(--text-color);
+            font-size: 12px;
+        }
+        .keybind-button {
+            background: var(--input-bg);
+            color: var(--text-color);
+            border: 1px solid var(--input-border);
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            min-width: 60px;
+            text-align: center;
+        }
+        .keybind-button.recording {
+            background: var(--button-bg);
+            color: white;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-top: 16px;
+        }
+        .stat-item {
+            background: var(--input-bg);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--input-border);
+        }
+        .stat-label {
+            color: var(--text-color);
+            font-size: 12px;
+            opacity: 0.7;
+            margin-bottom: 4px;
+        }
+        .stat-value {
+            color: var(--text-color);
+            font-size: 18px;
+            font-weight: bold;
         }
 
-        /* Volume Slider */
-        .volume-slider {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            z-index: 1000;
+        /* Loading Spinner */
+        .loading-spinner {
+            display: none;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--input-border);
+            border-top-color: var(--button-bg);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
         }
-        .volume-slider label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: var(--card-bg);
-            padding: 10px 16px;
-            border-radius: 8px;
-            border: 1px solid var(--input-border);
-            color: var(--text-color);
+        .loading-spinner.active {
+            display: block;
         }
-        .volume-slider input[type="range"] {
-            width: 100px;
-            cursor: pointer;
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
+
+        /* Cell Selection */
+        .ms-cell.selected {
+            outline: 3px solid var(--button-bg);
+            outline-offset: -3px;
+        }
+
+        /* High Contrast Mode */
+        body.high-contrast {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --board-bg: #000000;
+            --cell-bg: #000000;
+            --cell-hover: #333333;
+            --cell-revealed: #000000;
+            --cell-border: #ffffff;
+            --button-bg: #ffffff;
+            --button-hover: #cccccc;
+            --card-bg: #000000;
+            --input-bg: #000000;
+            --input-border: #ffffff;
+        }
+        body.high-contrast .ms-cell.revealed[data-mines="1"] { color: #00ffff; }
+        body.high-contrast .ms-cell.revealed[data-mines="2"] { color: #00ff00; }
+        body.high-contrast .ms-cell.revealed[data-mines="3"] { color: #ff0000; }
+        body.high-contrast .ms-cell.revealed[data-mines="4"] { color: #ffff00; }
+        body.high-contrast .ms-cell.revealed[data-mines="5"] { color: #ff00ff; }
+        body.high-contrast .ms-cell.revealed[data-mines="6"] { color: #00ffff; }
+        body.high-contrast .ms-cell.revealed[data-mines="7"] { color: #ffffff; }
+        body.high-contrast .ms-cell.revealed[data-mines="8"] { color: #cccccc; }
+        body.high-contrast .ms-cell.mine { background-color: #000000; color: #ff0000; }
 
         /* Score Edit Modal */
         .score-modal {
@@ -193,18 +391,157 @@
 </head>
 <body class="font-sans min-h-screen pb-10" style="background-color: var(--bg-color); color: var(--text-color);">
 
-    <div class="text-mode-toggle">
-        <label>
-            <input type="checkbox" id="textMode" onchange="toggleTextMode()">
-            <span>Text Mode</span>
-        </label>
+    <div class="settings-menu">
+        <button class="settings-toggle" onclick="toggleSettingsPanel()">Settings</button>
     </div>
 
-    <div class="volume-slider">
-        <label>
-            <span>🔊</span>
-            <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="1" onchange="changeVolume(this.value)">
-        </label>
+    <div class="settings-overlay" id="settingsOverlay">
+        <div class="settings-window">
+            <div class="settings-tabs">
+                <button class="settings-tab active" onclick="switchSettingsTab('general')">General</button>
+                <button class="settings-tab" onclick="switchSettingsTab('audio')">Audio</button>
+                <button class="settings-tab" onclick="switchSettingsTab('keybinds')">Keybinds</button>
+                <button class="settings-tab" onclick="switchSettingsTab('statistics')">Statistics</button>
+                <button class="settings-tab" onclick="switchSettingsTab('debug')">Debug</button>
+            </div>
+
+            <div class="settings-content active" id="settings-general">
+                <div class="settings-item">
+                    <label>Text Mode</label>
+                    <input type="checkbox" id="textMode" onchange="toggleTextMode()">
+                </div>
+                <div class="settings-item">
+                    <label>High Contrast</label>
+                    <input type="checkbox" id="highContrast" onchange="toggleHighContrast()">
+                </div>
+                <div class="settings-item">
+                    <label>Hide Timer</label>
+                    <input type="checkbox" id="hideTimer" onchange="toggleHideTimer()">
+                </div>
+                <div class="settings-item">
+                    <label>Question Marks</label>
+                    <input type="checkbox" id="questionMarks" onchange="toggleQuestionMarks()">
+                </div>
+                <div class="settings-item">
+                    <label>Chording</label>
+                    <input type="checkbox" id="chording" onchange="toggleChording()">
+                </div>
+                <div class="settings-item">
+                    <label>No Animations</label>
+                    <input type="checkbox" id="noAnimations" onchange="toggleNoAnimations()">
+                </div>
+            </div>
+
+            <div class="settings-content" id="settings-audio">
+                <div class="settings-item">
+                    <label>Sound Enabled</label>
+                    <input type="checkbox" id="soundEnabled" onchange="toggleSoundEnabled()">
+                </div>
+                <div class="settings-item">
+                    <label>Reveal Sound</label>
+                    <input type="checkbox" id="soundReveal" onchange="toggleSoundReveal()">
+                </div>
+                <div class="settings-item">
+                    <label>Flag Sound</label>
+                    <input type="checkbox" id="soundFlag" onchange="toggleSoundFlag()">
+                </div>
+                <div class="settings-item">
+                    <label>Explode Sound</label>
+                    <input type="checkbox" id="soundExplode" onchange="toggleSoundExplode()">
+                </div>
+                <div class="settings-item">
+                    <label>Win Sound</label>
+                    <input type="checkbox" id="soundWin" onchange="toggleSoundWin()">
+                </div>
+                <div class="settings-item">
+                    <label>Master Volume</label>
+                    <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="1" onchange="changeVolume(this.value)">
+                </div>
+            </div>
+
+            <div class="settings-content" id="settings-keybinds">
+                <div class="keybind-section">
+                    <h4>Navigation</h4>
+                    <div class="keybind-item">
+                        <label>Move Up</label>
+                        <button class="keybind-button" id="keybind-up" onclick="recordKeybind('up')">ArrowUp</button>
+                    </div>
+                    <div class="keybind-item">
+                        <label>Move Down</label>
+                        <button class="keybind-button" id="keybind-down" onclick="recordKeybind('down')">ArrowDown</button>
+                    </div>
+                    <div class="keybind-item">
+                        <label>Move Left</label>
+                        <button class="keybind-button" id="keybind-left" onclick="recordKeybind('left')">ArrowLeft</button>
+                    </div>
+                    <div class="keybind-item">
+                        <label>Move Right</label>
+                        <button class="keybind-button" id="keybind-right" onclick="recordKeybind('right')">ArrowRight</button>
+                    </div>
+                </div>
+                <div class="keybind-section">
+                    <h4>Actions</h4>
+                    <div class="keybind-item">
+                        <label>Uncover</label>
+                        <button class="keybind-button" id="keybind-uncover" onclick="recordKeybind('uncover')">1</button>
+                    </div>
+                    <div class="keybind-item">
+                        <label>Flag</label>
+                        <button class="keybind-button" id="keybind-flag" onclick="recordKeybind('flag')">3</button>
+                    </div>
+                    <div class="keybind-item">
+                        <label>Deselect</label>
+                        <button class="keybind-button" id="keybind-deselect" onclick="recordKeybind('deselect')">Escape</button>
+                    </div>
+                    <div class="keybind-item">
+                        <label>Reset</label>
+                        <button class="keybind-button" id="keybind-reset" onclick="recordKeybind('reset')"> </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-content" id="settings-statistics">
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Games Played</div>
+                        <div class="stat-value" id="stat-gamesPlayed">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Games Won</div>
+                        <div class="stat-value" id="stat-gamesWon">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Win Rate</div>
+                        <div class="stat-value" id="stat-winRate">0%</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Current Streak</div>
+                        <div class="stat-value" id="stat-currentStreak">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Best Streak</div>
+                        <div class="stat-value" id="stat-bestStreak">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Average Time</div>
+                        <div class="stat-value" id="stat-avgTime">0s</div>
+                    </div>
+                </div>
+                <div class="settings-item" style="margin-top: 20px;">
+                    <button onclick="resetStatistics()" style="background: #dc2626; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">Reset Statistics</button>
+                </div>
+            </div>
+
+            <div class="settings-content" id="settings-debug">
+                <div class="settings-item">
+                    <label>View Mines</label>
+                    <input type="checkbox" id="viewMines" onchange="toggleViewMines()">
+                </div>
+                <div class="settings-item">
+                    <button onclick="showScoreAnimation(30, () => animateScoreUpdate(msTotalScore, msTotalScore + 30))" style="background: var(--button-bg); color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">Test Score</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="score-modal" id="scoreModal">
@@ -220,10 +557,59 @@
 
     <script>
 let msTotalScore = parseInt(localStorage.getItem('msTotalScore')) || 0;
-let msTextMode = localStorage.getItem('msTextMode') === 'true';
+let msTextMode = localStorage.getItem('msTextMode') !== 'false'; // Default on
 let msVolume = parseFloat(localStorage.getItem('msVolume')) || 1;
-let cheatCodeSequence = '';
-const cheatCode = '12346';
+let msHighContrast = localStorage.getItem('msHighContrast') === 'true';
+let msHideTimer = localStorage.getItem('msHideTimer') === 'true';
+let msQuestionMarks = localStorage.getItem('msQuestionMarks') === 'true';
+let msChording = localStorage.getItem('msChording') !== 'false'; // Default on
+let msNoAnimations = localStorage.getItem('msNoAnimations') !== 'false'; // Default on
+
+// Sound settings
+let msSoundEnabled = localStorage.getItem('msSoundEnabled') !== 'false'; // Default on
+let msSoundReveal = localStorage.getItem('msSoundReveal') !== 'false';
+let msSoundFlag = localStorage.getItem('msSoundFlag') !== 'false';
+let msSoundExplode = localStorage.getItem('msSoundExplode') !== 'false';
+let msSoundWin = localStorage.getItem('msSoundWin') !== 'false';
+
+// Statistics
+let msStats = JSON.parse(localStorage.getItem('msStats')) || {
+    gamesPlayed: 0,
+    gamesWon: 0,
+    totalTime: 0,
+    bestTime: null,
+    currentStreak: 0,
+    bestStreak: 0
+};
+
+// Debug settings
+let msViewMines = localStorage.getItem('msViewMines') === 'true';
+let msSelectedCell = null;
+let msKeybinds = JSON.parse(localStorage.getItem('msKeybinds')) || {
+    up: 'ArrowUp',
+    down: 'ArrowDown',
+    left: 'ArrowLeft',
+    right: 'ArrowRight',
+    uncover: '1',
+    flag: '3',
+    deselect: 'Escape',
+    reset: ' '
+};
+
+// Migrate old array keybinds to single strings
+let migrated = false;
+Object.keys(msKeybinds).forEach(key => {
+    if (Array.isArray(msKeybinds[key])) {
+        msKeybinds[key] = msKeybinds[key][0];
+        migrated = true;
+    }
+});
+if (migrated) {
+    localStorage.setItem('msKeybinds', JSON.stringify(msKeybinds));
+}
+let msRecordingKeybind = null;
+let msModifierPressed = false;
+let msHoveredCell = null;
 let msBoard = [];
 let msRows = 8, msCols = 8, msMinesCount = 10;
 let msGameOver = false;
@@ -232,9 +618,49 @@ let msTimerInterval;
 let msStartTime = 0;
 let msFinalTime = 0;
 let msFlagsCount = 0;
+let msViewMinesUsed = false; // Track if View Mines was ever enabled during this game
 document.addEventListener('DOMContentLoaded', () => {
     updateBestTimesDisplay();
     startMinesweeper();
+    // Load settings
+    document.getElementById('textMode').checked = msTextMode;
+    document.getElementById('volumeSlider').value = msVolume;
+    document.getElementById('highContrast').checked = msHighContrast;
+    document.getElementById('hideTimer').checked = msHideTimer;
+    document.getElementById('questionMarks').checked = msQuestionMarks;
+    document.getElementById('chording').checked = msChording;
+    document.getElementById('noAnimations').checked = msNoAnimations;
+    
+    // Audio settings
+    document.getElementById('soundEnabled').checked = msSoundEnabled;
+    document.getElementById('soundReveal').checked = msSoundReveal;
+    document.getElementById('soundFlag').checked = msSoundFlag;
+    document.getElementById('soundExplode').checked = msSoundExplode;
+    document.getElementById('soundWin').checked = msSoundWin;
+    
+    // Debug settings
+    document.getElementById('viewMines').checked = msViewMines;
+    
+    // Update statistics display
+    updateStatisticsDisplay();
+    
+    // Apply settings
+    if (msHighContrast) document.body.classList.add('high-contrast');
+    if (msHideTimer) document.getElementById('timer-container').style.display = 'none';
+    // Load keybinds
+    Object.keys(msKeybinds).forEach(key => {
+        const btn = document.getElementById(`keybind-${key}`);
+        if (btn) {
+            let displayText = msKeybinds[key];
+            if (displayText === ' ') displayText = 'Space';
+            btn.innerText = displayText;
+        }
+    });
+    // Set initial volume for all audio elements
+    const audioElements = document.querySelectorAll('audio');
+    audioElements.forEach(audio => {
+        audio.volume = msVolume;
+    });
 });
 
 function startMinesweeper() {
@@ -257,6 +683,7 @@ function startMinesweeper() {
     msFirstClick = true;
     msFinalTime = 0;
     msFlagsCount = msMinesCount;
+    msViewMinesUsed = false; // Reset for new game
     clearInterval(msTimerInterval);
 
     document.getElementById('minesweeper-timer').innerText = "0";
@@ -329,6 +756,7 @@ function initMSBoard() {
     boardEl.style.gridTemplateColumns = `repeat(${msCols}, 48px)`;
     boardEl.style.width = 'min-content';
     msBoard = [];
+    msSelectedCell = null;
 
     for (let r = 0; r < msRows; r++) {
         msBoard[r] = [];
@@ -349,34 +777,92 @@ function initMSBoard() {
                 handleMSRightClick(r, c);
             };
 
+            cellEl.onmouseenter = () => {
+                msHoveredCell = { r, c };
+            };
+
+            cellEl.onmouseleave = () => {
+                msHoveredCell = null;
+            };
+
             boardEl.appendChild(cellEl);
-            msBoard[r][c] = { mine: false, revealed: false, flagged: false, neighbors: 0 };
+            msBoard[r][c] = { mine: false, revealed: false, flagged: false, questioned: false, neighbors: 0 };
         }
     }
 }
 
+function selectCell(r, c) {
+    if (msSelectedCell) {
+        const oldEl = document.getElementById(`ms-${msSelectedCell.r}-${msSelectedCell.c}`);
+        if (oldEl) oldEl.classList.remove('selected');
+    }
+    msSelectedCell = { r, c };
+    const newEl = document.getElementById(`ms-${r}-${c}`);
+    if (newEl) newEl.classList.add('selected');
+}
+
 function handleMSClick(r, c) {
-    if (msGameOver || msBoard[r][c].flagged || msBoard[r][c].revealed) return;
+    if (msGameOver || msBoard[r][c].flagged || msBoard[r][c].questioned) return;
+    
+    // Allow clicking on revealed cells for chording, but only if they have neighbors
+    if (msBoard[r][c].revealed && msBoard[r][c].neighbors === 0) return;
 
     if (msFirstClick) {
-        document.getElementById('minesweeper-status').innerText = "Generating board...";
+        document.getElementById('loadingSpinner').classList.add('active');
         msFirstClick = false;
         setTimeout(() => {
             placeMines(r, c);
             startMSTimer();
             revealCell(r, c);
-            document.getElementById('minesweeper-status').innerText = "";
+            document.getElementById('loadingSpinner').classList.remove('active');
         }, 10);
         return;
+    }
+
+    // Check for chording
+    if (msChording && msBoard[r][c].revealed && msBoard[r][c].neighbors > 0) {
+        const neighbors = getNeighbors(r, c);
+        const flaggedCount = neighbors.filter(n => msBoard[n.r][n.c].flagged).length;
+        
+        console.log(`Chording check: cell (${r},${c}) has ${msBoard[r][c].neighbors} neighbors, ${flaggedCount} flags`);
+        
+        if (flaggedCount === msBoard[r][c].neighbors) {
+            console.log(`Chording activated! Revealing ${neighbors.length} neighbors`);
+            // Reveal all unflagged neighbors
+            neighbors.forEach(n => {
+                if (!msBoard[n.r][n.c].flagged && !msBoard[n.r][n.c].revealed) {
+                    console.log(`Revealing neighbor (${n.r},${n.c})`);
+                    handleMSClick(n.r, n.c);
+                }
+            });
+            return; // Don't proceed to normal reveal
+        } else {
+            console.log(`Chording not activated: ${flaggedCount} flags != ${msBoard[r][c].neighbors} neighbors`);
+        }
     }
 
     revealCell(r, c);
 }
 
+function getNeighbors(r, c) {
+    const neighbors = [];
+    for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = r + dr;
+            const nc = c + dc;
+            if (nr >= 0 && nr < msRows && nc >= 0 && nc < msCols) {
+                neighbors.push({ r: nr, c: nc });
+            }
+        }
+    }
+    return neighbors;
+}
+
 function placeMines(safeR, safeC) {
     let attempts = 0;
     let solvable = false;
-    const generationStartTime = performance.now(); // Renamed to avoid confusion
+    const genStartTime = performance.now();
 
     while (!solvable && attempts < 100) {
         attempts++;
@@ -425,8 +911,11 @@ function placeMines(safeR, safeC) {
         }
     }
 
-    const duration = (performance.now() - generationStartTime).toFixed(2);
-    console.log(`%c✅ Solvable board found in ${attempts} attempts! (${duration}ms)`, "color: green; font-weight: bold;");
+    const genDuration = (performance.now() - genStartTime).toFixed(2);
+    console.log(`%c✅ Solvable board found in ${attempts} attempts! (${genDuration}ms)`, "color: green; font-weight: bold;");
+    
+    // Apply mine visibility after generating new board
+    updateMineVisibility();
 }
 
 function checkSolvability(startR, startC) {
@@ -525,22 +1014,46 @@ function revealCell(r, c) {
 
 function handleMSRightClick(r, c) {
     if (msGameOver || msBoard[r][c].revealed) return;
-    const cell = msBoard[r][c];
-    cell.flagged = !cell.flagged;
 
+    const cell = msBoard[r][c];
     const el = document.getElementById(`ms-${r}-${c}`);
+
     if (cell.flagged) {
-        playMSAudio('snd-flag');
-        el.classList.add('flagged');
-        el.innerHTML = msTextMode ? 'F' : '<img src="flag.png" alt="flag">';
-        if (msTextMode) el.classList.add('text-mode');
-        msFlagsCount--;
-    } else {
-        el.classList.remove('flagged');
+        if (msQuestionMarks) {
+            // Flag -> Question Mark
+            cell.flagged = false;
+            cell.questioned = true;
+            msFlagsCount++;
+            el.classList.remove('flagged');
+            el.classList.add('questioned');
+            el.innerHTML = msTextMode ? '?' : '<img src="question.png">';
+            if (msTextMode) el.classList.add('text-mode');
+            playMSAudio('snd-flag');
+        } else {
+            // Remove flag
+            cell.flagged = false;
+            msFlagsCount++;
+            el.classList.remove('flagged');
+            if (msTextMode) el.classList.add('text-mode');
+            el.innerHTML = '';
+            playMSAudio('snd-flag');
+        }
+    } else if (cell.questioned) {
+        // Question Mark -> Empty
+        cell.questioned = false;
+        el.classList.remove('questioned');
         el.innerHTML = '';
-        el.classList.remove('text-mode');
-        msFlagsCount++;
+        playMSAudio('snd-flag');
+    } else {
+        // Empty -> Flag
+        cell.flagged = true;
+        msFlagsCount--;
+        el.classList.add('flagged');
+        el.innerHTML = msTextMode ? 'F' : '<img src="flag.png">';
+        if (msTextMode) el.classList.add('text-mode');
+        playMSAudio('snd-flag');
     }
+
     document.getElementById('minesweeper-flags').innerText = msFlagsCount;
 }
 
@@ -569,6 +1082,27 @@ function gameOver(won) {
     clearInterval(msTimerInterval);
     msFinalTime = ((Date.now() - msStartTime) / 1000) || 0;
 
+    // Update statistics
+    msStats.gamesPlayed++;
+    if (won) {
+        // Don't count wins if View Mines was ever enabled during this game
+        if (!msViewMinesUsed) {
+            msStats.gamesWon++;
+            msStats.currentStreak++;
+            if (msStats.currentStreak > msStats.bestStreak) {
+                msStats.bestStreak = msStats.currentStreak;
+            }
+            if (!msStats.bestTime || msFinalTime < msStats.bestTime) {
+                msStats.bestTime = msFinalTime;
+            }
+        }
+    } else {
+        msStats.currentStreak = 0;
+    }
+    msStats.totalTime += msFinalTime;
+    localStorage.setItem('msStats', JSON.stringify(msStats));
+    updateStatisticsDisplay();
+
     const status = document.getElementById('minesweeper-status');
     const diff = document.getElementById('minesweeper-difficulty').value;
     document.getElementById('minesweeper-timer').innerText = msFinalTime.toFixed(2);
@@ -593,6 +1127,17 @@ function gameOver(won) {
         }
     }
 
+    // On win, give flag points for unflagged mines (assumes player knew where they were)
+    if (won) {
+        for (let r = 0; r < msRows; r++) {
+            for (let c = 0; c < msCols; c++) {
+                if (msBoard[r][c].mine && !msBoard[r][c].flagged) {
+                    correctFlags++;
+                }
+            }
+        }
+    }
+
     // flag scoring (always)
     gamePoints += correctFlags * 5;
     gamePoints -= wrongFlags * 10;
@@ -608,7 +1153,7 @@ function gameOver(won) {
     }
 
     // SAVE BEST TIME LOGIC
-    if (won) {
+    if (won && !msViewMinesUsed) {
         const isNewRecord = saveBestTime(diff, msFinalTime);
         if (isNewRecord) {
             pointBreakdown += "\nNEW PERSONAL BEST!";
@@ -622,23 +1167,34 @@ function gameOver(won) {
 
     gamePoints = Math.floor(gamePoints * difficultyMultiplier);
 
-    // save score
-    msTotalScore += gamePoints;
-    localStorage.setItem('msTotalScore', msTotalScore);
-    document.getElementById('minesweeper-total-score').innerText = msTotalScore;
-
-    // breakdown (only meaningful on win)
-    if (won) {
-        pointBreakdown = `
-Base: +100
-Flags: +${correctFlags * 5} / -${wrongFlags * 10}
-Speed: +${speedScore}
-Total: +${gamePoints}
-`;
+    // Show score animation if points gained
+    if (gamePoints > 0) {
+        const oldScore = msTotalScore;
+        const newScore = msTotalScore + gamePoints;
+        showScoreAnimation(gamePoints, () => {
+            // Update score after animation starts
+            animateScoreUpdate(oldScore, newScore);
+            msTotalScore = newScore;
+            localStorage.setItem('msTotalScore', msTotalScore);
+        });
+    } else {
+        // Update immediately if no points
+        msTotalScore += gamePoints;
+        localStorage.setItem('msTotalScore', msTotalScore);
+        document.getElementById('minesweeper-total-score').innerText = msTotalScore;
+    }
+    
+    // Don't award points if View Mines was ever enabled during this game
+    if (msViewMinesUsed) {
+        // Reset to original score (remove any points gained)
+        const originalScore = msTotalScore - gamePoints;
+        msTotalScore = originalScore;
+        localStorage.setItem('msTotalScore', msTotalScore);
+        document.getElementById('minesweeper-total-score').innerText = msTotalScore;
     }
 
     status.innerText = won
-        ? `YOU WIN!\n${pointBreakdown}\nTime: ${msFinalTime.toFixed(2)}s`
+        ? (msViewMinesUsed ? `TIME NOT SAVED - VIEW MINES ENABLED` : `YOU WIN! Time: ${msFinalTime.toFixed(2)}s`)
         : `GAME OVER! (+${gamePoints}) Time: ${msFinalTime.toFixed(2)}s`;
 
     status.className = won
@@ -664,7 +1220,13 @@ Total: +${gamePoints}
             }
             else if (cell.flagged) {
                 el.classList.add('revealed');
-                el.innerHTML = msTextMode ? 'F' : '<img src="flagwrong.png">';
+                if (!cell.mine) {
+                    // Incorrect flag - make it red
+                    el.style.color = '#ff0000';
+                    el.innerHTML = msTextMode ? 'F' : '<img src="flagwrong.png">';
+                } else {
+                    el.innerHTML = msTextMode ? 'F' : '<img src="flagright.png">';
+                }
                 if (msTextMode) el.classList.add('text-mode');
             }
         }
@@ -672,11 +1234,30 @@ Total: +${gamePoints}
 }
 
 function playMSAudio(id) {
+    if (!msSoundEnabled) return;
+
+    const soundMap = {
+        'snd-reveal': msSoundReveal,
+        'snd-flag': msSoundFlag,
+        'snd-explode': msSoundExplode,
+        'snd-win': msSoundWin
+    };
+
+    if (!soundMap[id]) return;
+
     const sound = document.getElementById(id);
-    if (sound) {
+    if (!sound) return;
+
+    // ONLY flag sound overlaps
+    if (id === 'snd-flag') {
+        const clone = sound.cloneNode();
+        clone.volume = msVolume;
+        clone.play();
+    } else {
+        // normal behavior for everything else
         sound.volume = msVolume;
-        sound.currentTime = 0; // Reset to start for rapid clicks
-        sound.play().catch(e => console.log("Audio play blocked until user interacts"));
+        sound.currentTime = 0;
+        sound.play().catch(() => {});
     }
 }
 
@@ -718,36 +1299,296 @@ function toggleTextMode() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('textMode').checked = msTextMode;
-    document.getElementById('volumeSlider').value = msVolume;
-    // Set initial volume for all audio elements
-    const audioElements = document.querySelectorAll('audio');
-    audioElements.forEach(audio => {
-        audio.volume = msVolume;
-    });
-});
-
-document.addEventListener('DOMContentLoaded', toggleCustomMinesweeper);
 
 window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space') {
+    
+    // Handle keybind recording
+    if (msRecordingKeybind) {
         e.preventDefault();
-        startMinesweeper();
+        msKeybinds[msRecordingKeybind] = e.key;
+        localStorage.setItem('msKeybinds', JSON.stringify(msKeybinds));
+        let displayText = e.key;
+        if (displayText === ' ') displayText = 'Space';
+        document.getElementById(`keybind-${msRecordingKeybind}`).innerText = displayText;
+        document.getElementById(`keybind-${msRecordingKeybind}`).classList.remove('recording');
+        msRecordingKeybind = null;
+        return;
+    }
+
+    // Handle game keybinds
+    const key = e.key;
+    
+    // Don't intercept Ctrl+number (for tab switching)
+    if (e.ctrlKey && key >= '1' && key <= '9') {
+        return;
     }
     
-    // Cheat code detection
-    if (e.key >= '0' && e.key <= '9') {
-        cheatCodeSequence += e.key;
-        if (cheatCodeSequence.length > 10) {
-            cheatCodeSequence = cheatCodeSequence.slice(-10);
+    // Helper function to check if key matches any keybind
+    const matchesKeybind = (action) => {
+        return msKeybinds[action] === key;
+    };
+    
+    // Reset
+    if (matchesKeybind('reset')) {
+        e.preventDefault();
+        startMinesweeper();
+        return;
+    }
+
+    // Deselect
+    if (matchesKeybind('deselect')) {
+        e.preventDefault();
+        if (msSelectedCell) {
+            const el = document.getElementById(`ms-${msSelectedCell.r}-${msSelectedCell.c}`);
+            if (el) el.classList.remove('selected');
+            msSelectedCell = null;
         }
-        if (cheatCodeSequence.includes(cheatCode)) {
-            openScoreModal();
-            cheatCodeSequence = '';
+        return;
+    }
+
+    // Navigation - allow navigation even without selection
+    if (matchesKeybind('up')) {
+        e.preventDefault();
+        if (!msSelectedCell) {
+            selectCell(0, 0);
+        } else {
+            moveSelection(-1, 0);
         }
+        return;
+    }
+    if (matchesKeybind('down')) {
+        e.preventDefault();
+        if (!msSelectedCell) {
+            selectCell(0, 0);
+        } else {
+            moveSelection(1, 0);
+        }
+        return;
+    }
+    if (matchesKeybind('left')) {
+        e.preventDefault();
+        if (!msSelectedCell) {
+            selectCell(0, 0);
+        } else {
+            moveSelection(0, -1);
+        }
+        return;
+    }
+    if (matchesKeybind('right')) {
+        e.preventDefault();
+        if (!msSelectedCell) {
+            selectCell(0, 0);
+        } else {
+            moveSelection(0, 1);
+        }
+        return;
+    }
+    if (matchesKeybind('uncover')) {
+        e.preventDefault();
+        // Prioritize selected cell, otherwise use hovered cell
+        const targetCell = msSelectedCell || msHoveredCell;
+        if (targetCell) {
+            handleMSClick(targetCell.r, targetCell.c);
+        }
+        return;
+    }
+    if (matchesKeybind('flag')) {
+        e.preventDefault();
+        // Prioritize selected cell, otherwise use hovered cell
+        const targetCell = msSelectedCell || msHoveredCell;
+        if (targetCell) {
+            handleMSRightClick(targetCell.r, targetCell.c);
+        }
+        return;
+    }
+    
+});
+
+
+function moveSelection(dr, dc) {
+    if (!msSelectedCell) return;
+    const newR = msSelectedCell.r + dr;
+    const newC = msSelectedCell.c + dc;
+    if (newR >= 0 && newR < msRows && newC >= 0 && newC < msCols) {
+        const oldEl = document.getElementById(`ms-${msSelectedCell.r}-${msSelectedCell.c}`);
+        if (oldEl) oldEl.classList.remove('selected');
+        msSelectedCell = { r: newR, c: newC };
+        const newEl = document.getElementById(`ms-${newR}-${newC}`);
+        if (newEl) newEl.classList.add('selected');
+    }
+}
+
+function toggleSettingsPanel() {
+    const overlay = document.getElementById('settingsOverlay');
+    overlay.classList.toggle('active');
+}
+
+// Close settings when clicking outside overlay
+document.addEventListener('click', (e) => {
+    const overlay = document.getElementById('settingsOverlay');
+    const settingsWindow = document.querySelector('.settings-window');
+    if (overlay.classList.contains('active') && !settingsWindow.contains(e.target) && !e.target.classList.contains('settings-toggle')) {
+        overlay.classList.remove('active');
     }
 });
+
+
+function switchSettingsTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.settings-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // Update content
+    document.querySelectorAll('.settings-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    document.getElementById(`settings-${tabName}`).classList.add('active');
+}
+
+function toggleQuestionMarks() {
+    msQuestionMarks = document.getElementById('questionMarks').checked;
+    localStorage.setItem('msQuestionMarks', msQuestionMarks);
+}
+
+function toggleChording() {
+    msChording = document.getElementById('chording').checked;
+    localStorage.setItem('msChording', msChording);
+}
+
+function toggleNoAnimations() {
+    msNoAnimations = document.getElementById('noAnimations').checked;
+    localStorage.setItem('msNoAnimations', msNoAnimations);
+}
+
+// Audio toggles
+function toggleSoundEnabled() {
+    msSoundEnabled = document.getElementById('soundEnabled').checked;
+    localStorage.setItem('msSoundEnabled', msSoundEnabled);
+}
+
+function toggleSoundReveal() {
+    msSoundReveal = document.getElementById('soundReveal').checked;
+    localStorage.setItem('msSoundReveal', msSoundReveal);
+}
+
+function toggleSoundFlag() {
+    msSoundFlag = document.getElementById('soundFlag').checked;
+    localStorage.setItem('msSoundFlag', msSoundFlag);
+}
+
+function toggleSoundExplode() {
+    msSoundExplode = document.getElementById('soundExplode').checked;
+    localStorage.setItem('msSoundExplode', msSoundExplode);
+}
+
+function toggleSoundWin() {
+    msSoundWin = document.getElementById('soundWin').checked;
+    localStorage.setItem('msSoundWin', msSoundWin);
+}
+
+// Statistics functions
+function updateStatisticsDisplay() {
+    document.getElementById('stat-gamesPlayed').textContent = msStats.gamesPlayed;
+    document.getElementById('stat-gamesWon').textContent = msStats.gamesWon;
+    document.getElementById('stat-winRate').textContent = msStats.gamesPlayed > 0 ? Math.round((msStats.gamesWon / msStats.gamesPlayed) * 100) + '%' : '0%';
+    document.getElementById('stat-currentStreak').textContent = msStats.currentStreak;
+    document.getElementById('stat-bestStreak').textContent = msStats.bestStreak;
+    document.getElementById('stat-avgTime').textContent = msStats.gamesPlayed > 0 ? Math.round(msStats.totalTime / msStats.gamesPlayed) + 's' : '0s';
+}
+
+function resetStatistics() {
+    if (confirm('Are you sure you want to reset all statistics?')) {
+        msStats = {
+            gamesPlayed: 0,
+            gamesWon: 0,
+            totalTime: 0,
+            bestTime: null,
+            currentStreak: 0,
+            bestStreak: 0
+        };
+        localStorage.setItem('msStats', JSON.stringify(msStats));
+        updateStatisticsDisplay();
+    }
+}
+
+// Debug functions
+function toggleViewMines() {
+    msViewMines = document.getElementById('viewMines').checked;
+    if (msViewMines) {
+        msViewMinesUsed = true; // Mark that View Mines was used in this game
+    }
+    localStorage.setItem('msViewMines', msViewMines);
+    updateMineVisibility();
+}
+
+
+function updateMineVisibility() {
+    if (!msBoard || msBoard.length === 0) return;
+    
+    const testModeIndicator = document.getElementById('testModeIndicator');
+    
+    for (let r = 0; r < msRows; r++) {
+        for (let c = 0; c < msCols; c++) {
+            const cell = msBoard[r][c];
+            const el = document.getElementById(`ms-${r}-${c}`);
+            if (!el) continue;
+            
+            if (cell.mine && !cell.revealed && msViewMines) {
+                el.style.opacity = '0.3';
+                el.innerHTML = msTextMode ? 'X' : '<img src="bomb.png" alt="bomb">';
+            } else if (cell.mine && !cell.revealed && !msViewMines) {
+                el.style.opacity = '1';
+                el.innerHTML = '';
+            }
+        }
+    }
+    
+    // Show/hide test mode indicator
+    testModeIndicator.style.display = msViewMines ? 'block' : 'none';
+}
+
+function toggleHighContrast() {
+    msHighContrast = document.getElementById('highContrast').checked;
+    localStorage.setItem('msHighContrast', msHighContrast);
+    if (msHighContrast) {
+        document.body.classList.add('high-contrast');
+    } else {
+        document.body.classList.remove('high-contrast');
+    }
+}
+
+function toggleHideTimer() {
+    msHideTimer = document.getElementById('hideTimer').checked;
+    localStorage.setItem('msHideTimer', msHideTimer);
+    const timerContainer = document.getElementById('timer-container');
+    const statsGrid = document.getElementById('stats-grid');
+    if (msHideTimer) {
+        timerContainer.style.display = 'none';
+        statsGrid.style.gridTemplateColumns = '1fr';
+        statsGrid.style.maxWidth = '150px';
+        statsGrid.style.margin = '0 auto';
+    } else {
+        timerContainer.style.display = 'block';
+        statsGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+        statsGrid.style.maxWidth = 'max-content';
+        statsGrid.style.margin = '0 auto';
+    }
+}
+
+
+function recordKeybind(action) {
+    if (msRecordingKeybind) {
+        // Cancel recording if already recording
+        document.getElementById(`keybind-${msRecordingKeybind}`).classList.remove('recording');
+        msRecordingKeybind = null;
+        return;
+    }
+    msRecordingKeybind = action;
+    document.getElementById(`keybind-${action}`).classList.add('recording');
+    document.getElementById(`keybind-${action}`).innerText = 'Press key...';
+}
 
 function openScoreModal() {
     document.getElementById('scoreInput').value = msTotalScore;
@@ -756,6 +1597,63 @@ function openScoreModal() {
 
 function closeScoreModal() {
     document.getElementById('scoreModal').classList.remove('active');
+}
+
+function showScoreAnimation(points, callback) {
+    if (msNoAnimations) {
+        // Skip animation if disabled
+        callback();
+        return;
+    }
+    
+    const totalScoreEl = document.getElementById('minesweeper-total-score');
+    const rect = totalScoreEl.getBoundingClientRect();
+    
+    const popup = document.createElement('div');
+    popup.className = 'score-popup';
+    popup.textContent = `+${points}`;
+    popup.style.left = `${rect.right + 10}px`;
+    popup.style.top = `${rect.top + -5}px`;
+    
+    document.body.appendChild(popup);
+    
+    // Start callback after popup appears
+    setTimeout(callback, 200);
+    
+    // Remove popup after animation
+    setTimeout(() => {
+        popup.remove();
+    }, 2000);
+}
+
+function animateScoreUpdate(startScore, endScore) {
+    if (msNoAnimations) {
+        // Skip animation if disabled
+        document.getElementById('minesweeper-total-score').innerText = endScore;
+        return;
+    }
+    
+    const scoreEl = document.getElementById('minesweeper-total-score');
+    const difference = endScore - startScore;
+    const steps = Math.min(Math.abs(difference), 15); // Max 15 steps
+    let current = startScore;
+    let step = 0;
+    
+    const interval = setInterval(() => {
+        step++;
+        
+        // Calculate progress with easing (gets faster)
+        const progress = step / steps;
+        const easedProgress = 1 - Math.pow(1 - progress, 3); // Cubic ease-out
+        
+        current = Math.floor(startScore + (difference * easedProgress));
+        scoreEl.innerText = current;
+        
+        if (step >= steps) {
+            clearInterval(interval);
+            scoreEl.innerText = endScore;
+        }
+    }, 50); // Start at 50ms, will appear to speed up due to easing
 }
 
 function saveScore() {
@@ -770,9 +1668,16 @@ function saveScore() {
 
     <main class="container mx-auto mt-8 p-4">
         <section id="minesweeper" class="p-6 rounded-xl shadow-md" style="background-color: var(--card-bg);">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold mb-6">Minesweeper</h2>
+            <div class="flex justify-between items-center mb-4 relative">
+                <div>
+                    <h2 class="text-xl font-bold mb-2">Minesweeper</h2>
+                    <div class="text-sm" style="color: var(--text-color); opacity: 0.7;">Total Score: <span id="minesweeper-total-score" class="font-bold">0</span></div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="loading-spinner" id="loadingSpinner"></div>
+                </div>
             </div>
+            <div id="testModeIndicator" style="position: absolute; top: 10px; right: 10px; color: #ff9900; font-weight: bold; opacity: 0.5; pointer-events: none; display: none;">TEST MODE</div>
             <div class="flex flex-col md:flex-row justify-center items-center gap-4 mb-4">
                 <select id="minesweeper-difficulty" onchange="toggleCustomMinesweeper()" class="border p-2 rounded w-full md:w-auto" style="background-color: var(--input-bg); color: var(--text-color); border-color: var(--input-border);">
                     <option value="easy">8x8 (10 mines)</option>
@@ -796,23 +1701,20 @@ function saveScore() {
                     <input id="minesweeper-custom-mines" type="number" min="1" value="12" class="border p-2 rounded" style="background-color: var(--input-bg); color: var(--text-color); border-color: var(--input-border);">
                 </div>
             </div>
-            <p class="text-center text-sm mb-4" style="color: var(--text-color); opacity: 0.7;">Right click to flag a cell. Press <span class="font-semibold">Spacebar</span> to reset.</p>
             <div class="text-center mb-4 overflow-auto">
                 <div id="minesweeper-board" class="inline-grid"></div>
             </div>
-            <div class="grid grid-cols-2 gap-4 text-center max-w-xs mx-auto">
+            <div class="grid grid-cols-2 gap-4 text-center max-w-xs mx-auto" id="stats-grid">
                 <div class="p-3 rounded" style="background-color: var(--input-bg);">
                     <div class="text-xl font-bold text-red-600" id="minesweeper-flags">0</div>
                     <div class="text-xs uppercase" style="opacity: 0.7;">Flags</div>
                 </div>
-                <div class="p-3 rounded" style="background-color: var(--input-bg);">
+                <div class="p-3 rounded" id="timer-container" style="background-color: var(--input-bg);">
                     <div class="text-xl font-bold text-blue-600" id="minesweeper-timer">0</div>
                     <div class="text-xs uppercase" style="opacity: 0.7;">Time</div>
                 </div>
-                <div>Total Score: <span id="minesweeper-total-score" class="font-bold text-blue-600">0</span></div>
             </div>
             <div id="minesweeper-status" class="text-center mt-4 font-bold text-lg h-8"></div>
-            <p class="text-center text-sm mt-3" style="color: var(--text-color); opacity: 0.7;">Use left click to uncover.</p>
             <div class="mt-6 p-4 rounded-lg border" style="background-color: var(--input-bg); border-color: var(--input-border);">
                 <h3 class="font-bold text-center mb-2">Best Times</h3>
                 <div class="grid grid-cols-3 gap-2 text-center text-sm">
