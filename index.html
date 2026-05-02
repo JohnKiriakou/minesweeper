@@ -8,8 +8,7 @@
     <style>
         /* Prevent all scrolling */
         html, body {
-            overflow: hidden;
-            height: 100vh;
+            overflow: auto;
             margin: 0;
             padding: 0;
         }
@@ -44,9 +43,9 @@
         .ms-cell {
             box-sizing: border-box;
             width: 48px;
-            height: 48px;
+            height: 48;
             background-color: var(--cell-bg);
-            border: 1px solid var(--cell-border);
+            border: 1 solid var(--cell-border);
             border-radius: 0;
             display: flex;
             align-items: center;
@@ -57,10 +56,10 @@
             cursor: pointer;
             transition: all 0.1s ease;
             user-select: none;
-            box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+            box-shadow: inset 0 1 2 rgba(0,0,0,0.1);
         }
         .ms-cell:hover:not(.revealed):not(.flagged) {
-            transform: translateY(-1px);
+            transform: translateY(-1);
             background-color: var(--cell-hover);
         }
         .ms-cell.revealed {
@@ -1604,7 +1603,7 @@ function showScoreAnimation(points, callback) {
     popup.className = 'score-popup';
     popup.textContent = `+${points}`;
     popup.style.left = `${rect.right -50}px`;
-    popup.style.top = `${rect.top +15}px`;
+    popup.style.top = `${rect.top +25}px`;
     
     document.body.appendChild(popup);
     
