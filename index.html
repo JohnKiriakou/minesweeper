@@ -634,6 +634,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Debug settings
     document.getElementById('viewMines').checked = msViewMines;
     
+    // Check if custom difficulty is selected and show panel
+    toggleCustomMinesweeper();
+    
     // NOW start the game after settings are loaded
     startMinesweeper();
     
@@ -742,10 +745,14 @@ function getMinesweeperSettings(diff) {
 
 function toggleCustomMinesweeper() {
     const customPanel = document.getElementById('minesweeper-custom-panel');
+    const suggestionContainer = document.getElementById('mine-suggestion-container');
     if (document.getElementById('minesweeper-difficulty').value === 'custom') {
-        customPanel.style.display = 'grid';
+        customPanel.style.display = 'flex';
+        suggestionContainer.style.display = 'block';
+        updateMineSuggestion(); // Update suggestion when showing
     } else {
         customPanel.style.display = 'none';
+        suggestionContainer.style.display = 'none';
     }
 }
 
@@ -1300,6 +1307,11 @@ function toggleTextMode() {
 
 window.addEventListener('keydown', (e) => {
     
+    // Don't intercept when typing in input fields
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+    }
+    
     // Handle keybind recording
     if (msRecordingKeybind) {
         e.preventDefault();
@@ -1650,6 +1662,68 @@ function saveScore() {
     closeScoreModal();
 }
 
+function updateMineSuggestion() {
+    const rows = parseInt(document.getElementById('minesweeper-custom-rows').value) || 10;
+    const cols = parseInt(document.getElementById('minesweeper-custom-cols').value) || 10;
+    const currentMines = parseInt(document.getElementById('minesweeper-custom-mines').value) || 1;
+    
+    const totalCells = rows * cols;
+    const maxMines = Math.floor(totalCells * 0.8); // Cap at 80% for playability
+    
+    // Calculate suggestion based on standard difficulties
+    let suggestedMines;
+    if (rows === 8 && cols === 8) {
+        suggestedMines = 10; // Easy: 8x8 = 10 mines (12.5%)
+    } else if (rows === 12 && cols === 12) {
+        suggestedMines = 20; // Medium: 12x12 = 20 mines (13.9%)
+    } else if (rows === 16 && cols === 16) {
+        suggestedMines = 40; // Hard: 16x16 = 40 mines (15.6%)
+    } else {
+        // For custom sizes, scale between the benchmarks
+        const easyCells = 8 * 8;
+        const mediumCells = 12 * 12;
+        const hardCells = 16 * 16;
+        
+        if (totalCells <= easyCells) {
+            suggestedMines = Math.floor((totalCells / easyCells) * 10);
+        } else if (totalCells <= mediumCells) {
+            const ratio = (totalCells - easyCells) / (mediumCells - easyCells);
+            suggestedMines = Math.floor(10 + ratio * (20 - 10));
+        } else if (totalCells <= hardCells) {
+            const ratio = (totalCells - mediumCells) / (hardCells - mediumCells);
+            suggestedMines = Math.floor(20 + ratio * (40 - 20));
+        } else {
+            // For very large boards, use ~15% density
+            suggestedMines = Math.floor(totalCells * 0.15);
+        }
+    }
+    
+    const suggestionEl = document.getElementById('mine-suggestion');
+    const currentDensity = ((currentMines / totalCells) * 100).toFixed(1);
+    const suggestedDensity = ((suggestedMines / totalCells) * 100).toFixed(1);
+    
+    let suggestionText = `Suggested: ${suggestedMines} mines (${suggestedDensity}% density)`;
+    
+    if (currentMines > maxMines) {
+        suggestionText += ` | Too many! Max: ${maxMines}`;
+        suggestionEl.style.color = '#ff6b6b';
+    } else if (currentMines > suggestedMines * 1.5) {
+        suggestionText += ` | ${currentDensity}% (Hard)`;
+        suggestionEl.style.color = '#ff6666';
+    } else if (currentMines > suggestedMines * 1.2) {
+        suggestionText += ` | ${currentDensity}% (Medium)`;
+        suggestionEl.style.color = '#ff9900';
+    } else if (currentMines < suggestedMines * 0.8) {
+        suggestionText += ` | ${currentDensity}% (Easy)`;
+        suggestionEl.style.color = '#4da6ff';
+    } else {
+        suggestionText += ` | ${currentDensity}% (Good)`;
+        suggestionEl.style.color = '#00ff00';
+    }
+    
+    suggestionEl.textContent = suggestionText;
+}
+
 </script>
 
     <main class="container mx-auto mt-8 p-4">
@@ -1673,19 +1747,22 @@ function saveScore() {
                 </select>
                 <button onclick="startMinesweeper()" class="px-6 py-2 rounded font-semibold transition-colors" style="background-color: var(--button-bg); color: white;">New Game</button>
             </div>
-            <div id="minesweeper-custom-panel" class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4" style="display:none;">
+            <div id="minesweeper-custom-panel" class="flex flex-col md:flex-row justify-center items-center gap-4 mb-2" style="display:none;">
                 <div class="flex flex-col">
                     <label class="text-sm mb-1" for="minesweeper-custom-rows" style="color: var(--text-color);">Rows</label>
-                    <input id="minesweeper-custom-rows" type="number" min="4" max="30" value="10" class="border p-2 rounded" style="background-color: var(--input-bg); color: var(--text-color); border-color: var(--input-border);">
+                    <input id="minesweeper-custom-rows" type="number" min="4" max="30" value="10" class="border p-2 rounded w-20" style="background-color: var(--input-bg); color: var(--text-color); border-color: var(--input-border);" oninput="updateMineSuggestion()">
                 </div>
                 <div class="flex flex-col">
                     <label class="text-sm mb-1" for="minesweeper-custom-cols" style="color: var(--text-color);">Cols</label>
-                    <input id="minesweeper-custom-cols" type="number" min="4" max="30" value="10" class="border p-2 rounded" style="background-color: var(--input-bg); color: var(--text-color); border-color: var(--input-border);">
+                    <input id="minesweeper-custom-cols" type="number" min="4" max="30" value="10" class="border p-2 rounded w-20" style="background-color: var(--input-bg); color: var(--text-color); border-color: var(--input-border);" oninput="updateMineSuggestion()">
                 </div>
                 <div class="flex flex-col">
                     <label class="text-sm mb-1" for="minesweeper-custom-mines" style="color: var(--text-color);">Mines</label>
-                    <input id="minesweeper-custom-mines" type="number" min="1" value="12" class="border p-2 rounded" style="background-color: var(--input-bg); color: var(--text-color); border-color: var(--input-border);">
+                    <input id="minesweeper-custom-mines" type="number" min="1" value="12" class="border p-2 rounded w-20" style="background-color: var(--input-bg); color: var(--text-color); border-color: var(--input-border);" oninput="updateMineSuggestion()">
                 </div>
+            </div>
+            <div id="mine-suggestion-container" class="text-center mb-4" style="display:none;">
+                <div id="mine-suggestion" class="text-xs" style="color: var(--text-color); opacity: 0.6;">Suggested: 12 mines (12% density)</div>
             </div>
             <div class="text-center mb-4 overflow-auto">
                 <div id="minesweeper-board" class="inline-grid"></div>
