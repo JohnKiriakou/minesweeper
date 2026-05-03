@@ -1858,7 +1858,7 @@ document.addEventListener('visibilitychange', () => {
 
 function updateMineSuggestion() {
     const rows = parseInt(document.getElementById('minesweeper-custom-rows').value) || 10;
-    // ... (rest of the code remains the same)
+    const cols = parseInt(document.getElementById('minesweeper-custom-cols').value) || 10;
     const currentMines = parseInt(document.getElementById('minesweeper-custom-mines').value) || 1;
     
     const totalCells = rows * cols;
