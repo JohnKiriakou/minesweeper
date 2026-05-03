@@ -151,7 +151,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.85);
             z-index: 2000;
             justify-content: center;
             align-items: flex-start;
@@ -160,16 +160,20 @@
         .settings-overlay.active {
             display: flex;
         }
-        .settings-window {
+        .settings-overlay.settings-window {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             background: var(--card-bg);
-            border: 1px solid var(--input-border);
             border-radius: 12px;
             padding: 24px;
-            width: 90%;
-            max-width: 600px;
-            max-height: 80vh;
-            overflow: auto;
             box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 1000;
         }
         .settings-tabs {
             display: flex;
@@ -214,6 +218,62 @@
         }
         .settings-item input[type="checkbox"] {
             cursor: pointer;
+        }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            margin-left: 8px;
+            color: var(--text-color);
+            opacity: 0.5;
+            font-size: 12px;
+            cursor: help;
+            transition: opacity 0.2s;
+        }
+        .tooltip:hover {
+            opacity: 0.8;
+        }
+        .tooltip .tooltip-content {
+            visibility: hidden;
+            width: 200px;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            text-align: left;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 10000;
+            bottom: 125%;
+            right: 0;
+            opacity: 0;
+            transition: opacity 0.3s;
+            border: 1px solid var(--input-border);
+            font-size: 12px;
+            line-height: 1.4;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .tooltip .tooltip-content.right-edge {
+            left: auto;
+            right: 0;
+            margin-left: 0;
+        }
+        .tooltip .tooltip-content.right-edge::after {
+            left: auto;
+            right: 20px;
+            margin-left: 0;
+        }
+        .tooltip .tooltip-content::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            right: 20px;
+            margin-left: 0;
+            border-width: 5px;
+            border-style: solid;
+            border-color: var(--input-bg) transparent transparent transparent;
+        }
+        .tooltip:hover .tooltip-content {
+            visibility: visible;
+            opacity: 1;
         }
         .settings-item input[type="range"] {
             width: 120px;
@@ -296,6 +356,11 @@
         }
         @keyframes spin {
             to { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
         }
 
         /* Cell Selection */
@@ -406,7 +471,7 @@
 
             <div class="settings-content active" id="settings-general">
                 <div class="settings-item">
-                    <label>Text Mode</label>
+                    <label>Text Mode<span class="tooltip">?<span class="tooltip-content">Turn this off to show custom textures</span></span></label>
                     <input type="checkbox" id="textMode" onchange="toggleTextMode()">
                 </div>
                 <div class="settings-item">
@@ -418,12 +483,16 @@
                     <input type="checkbox" id="hideTimer" onchange="toggleHideTimer()">
                 </div>
                 <div class="settings-item">
-                    <label>Question Marks</label>
+                    <label>Question Marks<span class="tooltip">?<span class="tooltip-content">Right clicking a flagged square will show a question mark</span></span></label>
                     <input type="checkbox" id="questionMarks" onchange="toggleQuestionMarks()">
                 </div>
                 <div class="settings-item">
-                    <label>Chording</label>
+                    <label>Chording<span class="tooltip">?<span class="tooltip-content">Clicking a number which has the appropriate amount of flags next to it will uncover all adjacent squares</span></span></label>
                     <input type="checkbox" id="chording" onchange="toggleChording()">
+                </div>
+                <div class="settings-item">
+                    <label>Auto Pause<span class="tooltip">?<span class="tooltip-content">Pause the timer while you're tabbed out</span></span></label>
+                    <input type="checkbox" id="autoPause" onchange="toggleAutoPause()">
                 </div>
                             </div>
 
@@ -559,6 +628,7 @@ let msHideTimer = localStorage.getItem('msHideTimer') === 'true';
 let msQuestionMarks = localStorage.getItem('msQuestionMarks') === 'true';
 let msChording = localStorage.getItem('msChording') !== 'false'; // Default on
 let msNoAnimations = localStorage.getItem('msNoAnimations') !== 'false'; // Default on
+let msAutoPause = localStorage.getItem('msAutoPause') !== 'false'; // Default on
 
 // Sound settings
 let msSoundEnabled = localStorage.getItem('msSoundEnabled') !== 'false'; // Default on
@@ -614,6 +684,11 @@ let msStartTime = 0;
 let msFinalTime = 0;
 let msFlagsCount = 0;
 let msViewMinesUsed = false; // Track if View Mines was ever enabled during this game
+let msIsPaused = false;
+let msElapsedBeforePause = 0; // Time elapsed before pause
+let msWasAutoPaused = false; // Track if game was auto-paused
+let msReplayData = []; // Store all moves for replay
+let msIsReplaying = false; // Track if currently replaying
 document.addEventListener('DOMContentLoaded', () => {
     updateBestTimesDisplay();
     // Load settings FIRST
@@ -623,6 +698,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('hideTimer').checked = msHideTimer;
     document.getElementById('questionMarks').checked = msQuestionMarks;
     document.getElementById('chording').checked = msChording;
+    document.getElementById('autoPause').checked = msAutoPause;
         
     // Audio settings
     document.getElementById('soundEnabled').checked = msSoundEnabled;
@@ -682,9 +758,28 @@ function startMinesweeper() {
     msFirstClick = true;
     msFinalTime = 0;
     msFlagsCount = msMinesCount;
+    msIsPaused = false;
+    msElapsedBeforePause = 0;
+    msWasAutoPaused = false;
+    msReplayData = [];
+    msIsReplaying = false;
     
     // Check if View Mines is already enabled when game starts
     msViewMinesUsed = msViewMines;
+    
+    // Reset pause button
+    const pauseButton = document.getElementById('pauseButton');
+    pauseButton.style.display = 'none';
+    pauseButton.textContent = 'Pause';
+    pauseButton.className = 'px-3 py-1 rounded text-sm font-semibold transition-colors bg-white text-gray-800 hover:bg-gray-100';
+    
+    // Reset pause overlay
+    document.getElementById('pauseOverlay').style.display = 'none';
+    
+    // Reset board visibility
+    const board = document.getElementById('minesweeper-board');
+    board.style.opacity = '1';
+    board.style.pointerEvents = 'auto';
     
     clearInterval(msTimerInterval);
 
@@ -808,8 +903,9 @@ function selectCell(r, c) {
 }
 
 function handleMSClick(r, c) {
-    if (msGameOver || msBoard[r][c].flagged || msBoard[r][c].questioned) return;
+    if (msGameOver || msIsPaused || msBoard[r][c].flagged || msBoard[r][c].questioned) return;
     
+        
     // Allow clicking on revealed cells for chording, but only if they have neighbors
     if (msBoard[r][c].revealed && msBoard[r][c].neighbors === 0) return;
 
@@ -821,6 +917,8 @@ function handleMSClick(r, c) {
             startMSTimer();
             revealCell(r, c);
             document.getElementById('loadingSpinner').classList.remove('active');
+            // Show pause button when game starts
+            document.getElementById('pauseButton').style.display = 'block';
         }, 10);
         return;
     }
@@ -1019,8 +1117,9 @@ function revealCell(r, c) {
 }
 
 function handleMSRightClick(r, c) {
-    if (msGameOver || msBoard[r][c].revealed) return;
-
+    if (msGameOver || msIsPaused || msBoard[r][c].revealed) return;
+    
+    
     const cell = msBoard[r][c];
     const el = document.getElementById(`ms-${r}-${c}`);
 
@@ -1066,8 +1165,8 @@ function handleMSRightClick(r, c) {
 function startMSTimer() {
     msStartTime = Date.now();
     msTimerInterval = setInterval(() => {
-        const elapsed = (Date.now() - msStartTime) / 1000;
-        document.getElementById('minesweeper-timer').innerText = Math.floor(elapsed);
+        const totalElapsed = (msElapsedBeforePause + (Date.now() - msStartTime)) / 1000;
+        document.getElementById('minesweeper-timer').innerText = Math.floor(totalElapsed);
     }, 100);
 }
 
@@ -1197,9 +1296,12 @@ function gameOver(won) {
         document.getElementById('minesweeper-total-score').innerText = msTotalScore;
     }
 
-    status.innerText = won
+    // Create game over message with replay button
+    const message = won
         ? (msViewMinesUsed ? `TIME NOT SAVED - VIEW MINES ENABLED` : `YOU WIN! Time: ${msFinalTime.toFixed(2)}s`)
         : `GAME OVER! (+${gamePoints}) Time: ${msFinalTime.toFixed(2)}s`;
+    
+    status.innerHTML = `<div>${message}</div>`;
 
     status.className = won
         ? "text-green-600 font-bold text-center mt-4"
@@ -1467,6 +1569,11 @@ function toggleChording() {
     localStorage.setItem('msChording', msChording);
 }
 
+function toggleAutoPause() {
+    msAutoPause = document.getElementById('autoPause').checked;
+    localStorage.setItem('msAutoPause', msAutoPause);
+}
+
 
 // Audio toggles
 function toggleSoundEnabled() {
@@ -1662,9 +1769,96 @@ function saveScore() {
     closeScoreModal();
 }
 
+function togglePause() {
+    if (msGameOver || msFirstClick) return; // Can't pause before game starts
+    
+    const pauseButton = document.getElementById('pauseButton');
+    const pauseOverlay = document.getElementById('pauseOverlay');
+    const board = document.getElementById('minesweeper-board');
+    const pauseIcon = document.getElementById('pauseIcon');
+    const playIcon = document.getElementById('playIcon');
+    
+    if (!msIsPaused) {
+        // Pause the game
+        msIsPaused = true;
+        pauseButton.textContent = 'Paused';
+        pauseButton.className = 'px-3 py-1 rounded text-sm font-semibold transition-colors bg-white text-gray-800 hover:bg-gray-100';
+        pauseOverlay.style.display = 'flex';
+        pauseOverlay.style.opacity = '1';
+        pauseIcon.style.display = 'flex';
+        playIcon.style.display = 'none';
+        board.style.opacity = '0';
+        board.style.pointerEvents = 'none';
+        
+        // Pause the timer and record elapsed time
+        if (msTimerInterval) {
+            clearInterval(msTimerInterval);
+            msTimerInterval = null;
+            msElapsedBeforePause += Date.now() - msStartTime;
+        }
+    } else {
+        // Resume the game with animation
+        pauseIcon.style.display = 'none';
+        playIcon.style.display = 'flex';
+        playIcon.parentElement.style.transform = 'scale(1.2)';
+        
+        // Fade out the pause overlay
+        pauseOverlay.style.opacity = '0';
+        
+        // Wait for fade out to complete, then resume
+        setTimeout(() => {
+            pauseOverlay.style.display = 'none';
+            pauseButton.textContent = 'Pause';
+            pauseButton.className = 'px-3 py-1 rounded text-sm font-semibold transition-colors bg-white text-gray-800 hover:bg-gray-100';
+            board.style.opacity = '1';
+            board.style.pointerEvents = 'auto';
+            
+            // Resume the timer
+            if (!msTimerInterval && !msGameOver && !msFirstClick) {
+                msStartTime = Date.now();
+                startMSTimer();
+            }
+            
+            // Reset icon animation
+            playIcon.parentElement.style.transform = 'scale(1)';
+            
+            msIsPaused = false;
+        }, 300);
+    }
+}
+
+// Add click anywhere to unpause functionality
+document.addEventListener('click', (e) => {
+    if (msIsPaused && e.target.id !== 'pauseButton') {
+        togglePause();
+    }
+});
+
+// Tab visibility detection for auto-pause
+document.addEventListener('visibilitychange', () => {
+    if (!msAutoPause || msGameOver || msFirstClick) return;
+    
+    if (document.hidden) {
+        // Tab is hidden, auto-pause if game is active
+        if (!msIsPaused) {
+            msWasAutoPaused = true;
+            togglePause();
+        }
+    } else {
+        // Tab is visible, auto-resume if we auto-paused
+        if (msIsPaused && msWasAutoPaused) {
+            msWasAutoPaused = false;
+            togglePause();
+        }
+    }
+});
+
+// ... (rest of the code remains the same)
+
+
 function updateMineSuggestion() {
     const rows = parseInt(document.getElementById('minesweeper-custom-rows').value) || 10;
-    const cols = parseInt(document.getElementById('minesweeper-custom-cols').value) || 10;
+    // ... (rest of the code remains the same)
     const currentMines = parseInt(document.getElementById('minesweeper-custom-mines').value) || 1;
     
     const totalCells = rows * cols;
@@ -1735,10 +1929,26 @@ function updateMineSuggestion() {
                 </div>
                 <div class="flex items-center gap-2">
                     <div class="loading-spinner" id="loadingSpinner"></div>
+                    <button id="pauseButton" onclick="togglePause()" class="px-3 py-1 rounded text-sm font-semibold transition-colors bg-white text-gray-800 hover:bg-gray-100" style="display: none;">Pause</button>
                 </div>
             </div>
             <div id="testModeIndicator" style="position: absolute; top: 10px; right: 10px; color: #ff9900; font-weight: bold; opacity: 0.5; pointer-events: none; display: none;">TEST MODE</div>
-            <div class="flex flex-col md:flex-row justify-center items-center gap-4 mb-4">
+            <div id="pauseOverlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.8); display: none; justify-content: center; align-items: center; z-index: 100; cursor: pointer; transition: opacity 0.3s ease;">
+                <div style="text-align: center; color: white; pointer-events: none;">
+                    <div id="pausePlayIcon" style="margin-bottom: 1rem; transition: transform 0.3s ease;">
+                        <div id="pauseIcon" style="display: flex; gap: 12px; justify-content: center;">
+                            <div style="width: 6px; height: 30px; background-color: white;"></div>
+                            <div style="width: 6px; height: 30px; background-color: white;"></div>
+                        </div>
+                        <div id="playIcon" style="display: none; justify-content: center;">
+                            <div style="width: 0; height: 0; border-left: 25px solid white; border-top: 15px solid transparent; border-bottom: 15px solid transparent; margin-left: 5px;"></div>
+                        </div>
+                    </div>
+                    <div style="font-size: 1.5rem; font-weight: bold;">GAME PAUSED</div>
+                    <div style="font-size: 1rem; opacity: 0.8; margin-top: 0.5rem;">Click anywhere to resume</div>
+                </div>
+            </div>
+                        <div class="flex flex-col md:flex-row justify-center items-center gap-4 mb-4">
                 <select id="minesweeper-difficulty" onchange="toggleCustomMinesweeper()" class="border p-2 rounded w-full md:w-auto" style="background-color: var(--input-bg); color: var(--text-color); border-color: var(--input-border);">
                     <option value="easy">8x8 (10 mines)</option>
                     <option value="medium">12x12 (20 mines)</option>
