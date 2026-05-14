@@ -912,6 +912,10 @@ function handleMSClick(r, c) {
     if (msFirstClick) {
         document.getElementById('loadingSpinner').classList.add('active');
         msFirstClick = false;
+        
+        // 1. Capture physical start time IMMEDIATELY on click
+        msStartTime = Date.now(); 
+
         setTimeout(() => {
             placeMines(r, c);
             startMSTimer();
@@ -1163,7 +1167,7 @@ function handleMSRightClick(r, c) {
 }
 
 function startMSTimer() {
-    msStartTime = Date.now();
+   // msStartTime = Date.now();
     msTimerInterval = setInterval(() => {
         const totalElapsed = (msElapsedBeforePause + (Date.now() - msStartTime)) / 1000;
         document.getElementById('minesweeper-timer').innerText = Math.floor(totalElapsed);
