@@ -1189,7 +1189,7 @@ function checkWin() {
 function gameOver(won) {
     msGameOver = true;
     clearInterval(msTimerInterval);
-    msFinalTime = ((Date.now() - msStartTime) / 1000) || 0;
+    msFinalTime = ((msElapsedBeforePause + (Date.now() - msStartTime)) / 1000) || 0;
 
     // Update statistics
     msStats.gamesPlayed++;
