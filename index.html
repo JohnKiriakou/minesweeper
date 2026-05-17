@@ -15,18 +15,18 @@
         
         /* Theme Variables */
         :root {
-            --bg-color: #1e1e2e;
-            --text-color: #ffffff;
-            --board-bg: #2d2d3a;
-            --cell-bg: #3a3a4a;
-            --cell-hover: #4a4a5a;
-            --cell-revealed: #252530;
-            --cell-border: #4a4a5a;
-            --button-bg: #5568d3;
-            --button-hover: #6a7ce8;
-            --card-bg: #2d2d3a;
-            --input-bg: #3a3a4a;
-            --input-border: #4a4a5a;
+            --bg-color: #000000;       /* Ultra dark body background */
+            --text-color: #ffffff;     /* White text for sharp contrast */
+            --board-bg: #0d0d0d;       /* Very subtle dark grey for the board outline */
+            --cell-bg: #141414;        /* Dark grey unrevealed cells */
+            --cell-hover: #222222;     /* Slight highlight when hovering over a cell */
+            --cell-revealed: #000000;  /* Pure black revealed cells */
+            --cell-border: #1f1f1f;    /* Distinct gridlines to separate your black cells */
+            --button-bg: #222222;      /* Sleek dark theme buttons */
+            --button-hover: #333333;   /* Button hover state */
+            --card-bg: #0a0a0a;        /* Settings window background */
+            --input-bg: #141414;       /* Interactive inputs background */
+            --input-border: #262626;   /* Borders for text fields / checkboxes */
         }
 
         /* Minesweeper Styling */
@@ -75,7 +75,7 @@
         .ms-cell.flagged.text-mode {
             color: var(--text-color);
         }
-        .ms-cell.mine { background-color: #3a1a1a; color: #ff6b6b; }
+        .ms-cell.mine { background-color: #000000; color: #ff0000; }
 
 
         /* Score Animation */
@@ -185,17 +185,19 @@
             padding: 8px 16px;
             background: none;
             border: none;
-            color: var(--text-color);
+            color: #ffffff; /* Forces unselected tabs to be bright white */
+            opacity: 0.6;   /* Gives a clean, dim look to inactive tabs */
             cursor: pointer;
             border-bottom: 2px solid transparent;
             transition: all 0.2s;
         }
         .settings-tab:hover {
-            opacity: 0.8;
+            opacity: 1;     /* Shines brightly when you hover over it */
         }
         .settings-tab.active {
-            border-bottom-color: var(--button-bg);
-            color: var(--button-bg);
+            border-bottom-color: #ffffff; /* White indicator underline */
+            color: #ffffff;               /* Keeps active tab pure white */
+            opacity: 1;                   /* Full solid contrast for active tab */
         }
         .settings-content {
             display: none;
@@ -858,6 +860,8 @@ function initMSBoard() {
     boardEl.style.width = 'min-content';
     msBoard = [];
     msSelectedCell = null;
+
+    boardEl.oncontextmenu = (e) => e.preventDefault();
 
     for (let r = 0; r < msRows; r++) {
         msBoard[r] = [];
